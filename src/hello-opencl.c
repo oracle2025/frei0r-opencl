@@ -9,8 +9,11 @@
 #include <stdio.h>
 
 #include <stdlib.h>
-
+#ifdef __APPLE__
+#include <OpenCL/cl.h>
+#else
 #include <CL/cl.h>
+#endif
 
 //
 
@@ -18,19 +21,19 @@
 
 const char* OpenCLSource[] = {
 
-"__kernel void VectorAdd(__global int* c, __global int* a,__global int* b)",
+	"__kernel void VectorAdd(__global int* c, __global int* a,__global int* b)",
 
-"{",
+	"{",
 
-" // Index of the elements to add \n",
+	" // Index of the elements to add \n",
 
-" unsigned int n = get_global_id(0);",
+	" unsigned int n = get_global_id(0);",
 
-" // Sum the nth element of vectors a and b and store in c \n",
+	" // Sum the nth element of vectors a and b and store in c \n",
 
-" c[n] = a[n] + b[n];",
+	" c[n] = a[n] + b[n];",
 
-"}"
+	"}"
 
 };
 
@@ -52,130 +55,130 @@ int main(int argc, char **argv)
 
 {
 
-     // Two integer source vectors in Host memory
+	// Two integer source vectors in Host memory
 
-     int HostVector1[SIZE], HostVector2[SIZE];
+	int HostVector1[SIZE], HostVector2[SIZE];
 
-     //Output Vector
+	//Output Vector
 
-     int HostOutputVector[SIZE];
+	int HostOutputVector[SIZE];
 
-     // Initialize with some interesting repeating data
+	// Initialize with some interesting repeating data
 
-     for(int c = 0; c < SIZE; c++)
+	for(int c = 0; c < SIZE; c++)
 
-     {
+	{
 
-          HostVector1[c] = InitialData1[c%20];
+		HostVector1[c] = InitialData1[c%20];
 
-          HostVector2[c] = InitialData2[c%20];
+		HostVector2[c] = InitialData2[c%20];
 
-          HostOutputVector[c] = 0;
+		HostOutputVector[c] = 0;
 
-     }
+	}
 
-     //Get an OpenCL platform
+	//Get an OpenCL platform
 
-     cl_platform_id cpPlatform;
+	cl_platform_id cpPlatform;
 
-     clGetPlatformIDs(1, &cpPlatform, NULL);
+	clGetPlatformIDs(1, &cpPlatform, NULL);
 
-     // Get a GPU device
+	// Get a GPU device
 
-     cl_device_id cdDevice;
+	cl_device_id cdDevice;
 
-     clGetDeviceIDs(cpPlatform, CL_DEVICE_TYPE_GPU, 1, &cdDevice, NULL);
+	clGetDeviceIDs(cpPlatform, CL_DEVICE_TYPE_GPU, 1, &cdDevice, NULL);
 
-     char cBuffer[1024];
+	char cBuffer[1024];
 
-     clGetDeviceInfo(cdDevice, CL_DEVICE_NAME, sizeof(cBuffer), &cBuffer, NULL);
+	clGetDeviceInfo(cdDevice, CL_DEVICE_NAME, sizeof(cBuffer), &cBuffer, NULL);
 
-     printf("CL_DEVICE_NAME: %s\n", cBuffer);
+	printf("CL_DEVICE_NAME: %s\n", cBuffer);
 
-     clGetDeviceInfo(cdDevice, CL_DRIVER_VERSION, sizeof(cBuffer), &cBuffer, NULL);
+	clGetDeviceInfo(cdDevice, CL_DRIVER_VERSION, sizeof(cBuffer), &cBuffer, NULL);
 
-     printf("CL_DRIVER_VERSION: %s\n\n", cBuffer);
+	printf("CL_DRIVER_VERSION: %s\n\n", cBuffer);
 
-     // Create a context to run OpenCL enabled GPU
+	// Create a context to run OpenCL enabled GPU
 
-     cl_context GPUContext = clCreateContextFromType(0, CL_DEVICE_TYPE_GPU, NULL, NULL, NULL);
+	cl_context GPUContext = clCreateContextFromType(0, CL_DEVICE_TYPE_GPU, NULL, NULL, NULL);
 
-     // Create a command-queue on the GPU device
+	// Create a command-queue on the GPU device
 
-     cl_command_queue cqCommandQueue = clCreateCommandQueue(GPUContext, cdDevice, 0, NULL);
+	cl_command_queue cqCommandQueue = clCreateCommandQueue(GPUContext, cdDevice, 0, NULL);
 
-     // Allocate GPU memory for source vectors AND initialize from CPU memory
+	// Allocate GPU memory for source vectors AND initialize from CPU memory
 
-     cl_mem GPUVector1 = clCreateBuffer(GPUContext, CL_MEM_READ_ONLY |
+	cl_mem GPUVector1 = clCreateBuffer(GPUContext, CL_MEM_READ_ONLY |
 
-     CL_MEM_COPY_HOST_PTR, sizeof(int) * SIZE, HostVector1, NULL);
+			CL_MEM_COPY_HOST_PTR, sizeof(int) * SIZE, HostVector1, NULL);
 
-     cl_mem GPUVector2 = clCreateBuffer(GPUContext, CL_MEM_READ_ONLY |
+	cl_mem GPUVector2 = clCreateBuffer(GPUContext, CL_MEM_READ_ONLY |
 
-     CL_MEM_COPY_HOST_PTR, sizeof(int) * SIZE, HostVector2, NULL);
+			CL_MEM_COPY_HOST_PTR, sizeof(int) * SIZE, HostVector2, NULL);
 
-     // Allocate output memory on GPU
+	// Allocate output memory on GPU
 
-     cl_mem GPUOutputVector = clCreateBuffer(GPUContext, CL_MEM_WRITE_ONLY,
+	cl_mem GPUOutputVector = clCreateBuffer(GPUContext, CL_MEM_WRITE_ONLY,
 
-     sizeof(int) * SIZE, NULL, NULL);
+			sizeof(int) * SIZE, NULL, NULL);
 
-     // Create OpenCL program with source code
+	// Create OpenCL program with source code
 
-     cl_program OpenCLProgram = clCreateProgramWithSource(GPUContext, 7, OpenCLSource, NULL, NULL);
+	cl_program OpenCLProgram = clCreateProgramWithSource(GPUContext, 7, OpenCLSource, NULL, NULL);
 
-     // Build the program (OpenCL JIT compilation)
+	// Build the program (OpenCL JIT compilation)
 
-     clBuildProgram(OpenCLProgram, 0, NULL, NULL, NULL, NULL);
+	clBuildProgram(OpenCLProgram, 0, NULL, NULL, NULL, NULL);
 
-     // Create a handle to the compiled OpenCL function (Kernel)
+	// Create a handle to the compiled OpenCL function (Kernel)
 
-     cl_kernel OpenCLVectorAdd = clCreateKernel(OpenCLProgram, "VectorAdd", NULL);
+	cl_kernel OpenCLVectorAdd = clCreateKernel(OpenCLProgram, "VectorAdd", NULL);
 
-     // In the next step we associate the GPU memory with the Kernel arguments
+	// In the next step we associate the GPU memory with the Kernel arguments
 
-     clSetKernelArg(OpenCLVectorAdd, 0, sizeof(cl_mem), (void*)&GPUOutputVector);
+	clSetKernelArg(OpenCLVectorAdd, 0, sizeof(cl_mem), (void*)&GPUOutputVector);
 
-     clSetKernelArg(OpenCLVectorAdd, 1, sizeof(cl_mem), (void*)&GPUVector1);
+	clSetKernelArg(OpenCLVectorAdd, 1, sizeof(cl_mem), (void*)&GPUVector1);
 
-     clSetKernelArg(OpenCLVectorAdd, 2, sizeof(cl_mem), (void*)&GPUVector2);
+	clSetKernelArg(OpenCLVectorAdd, 2, sizeof(cl_mem), (void*)&GPUVector2);
 
-     // Launch the Kernel on the GPU
+	// Launch the Kernel on the GPU
 
-     // This kernel only uses global data
+	// This kernel only uses global data
 
-     size_t WorkSize[1] = {SIZE}; // one dimensional Range
+	size_t WorkSize[1] = {SIZE}; // one dimensional Range
 
-     clEnqueueNDRangeKernel(cqCommandQueue, OpenCLVectorAdd, 1, NULL,
+	clEnqueueNDRangeKernel(cqCommandQueue, OpenCLVectorAdd, 1, NULL,
 
-     WorkSize, NULL, 0, NULL, NULL);
+			WorkSize, NULL, 0, NULL, NULL);
 
-     // Copy the output in GPU memory back to CPU memory
+	// Copy the output in GPU memory back to CPU memory
 
-     clEnqueueReadBuffer(cqCommandQueue, GPUOutputVector, CL_TRUE, 0,
+	clEnqueueReadBuffer(cqCommandQueue, GPUOutputVector, CL_TRUE, 0,
 
-     SIZE * sizeof(int), HostOutputVector, 0, NULL, NULL);
+			SIZE * sizeof(int), HostOutputVector, 0, NULL, NULL);
 
-     // Cleanup
+	// Cleanup
 
-     clReleaseKernel(OpenCLVectorAdd);
+	clReleaseKernel(OpenCLVectorAdd);
 
-     clReleaseProgram(OpenCLProgram);
+	clReleaseProgram(OpenCLProgram);
 
-     clReleaseCommandQueue(cqCommandQueue);
+	clReleaseCommandQueue(cqCommandQueue);
 
-     clReleaseContext(GPUContext);
+	clReleaseContext(GPUContext);
 
-     clReleaseMemObject(GPUVector1);
+	clReleaseMemObject(GPUVector1);
 
-     clReleaseMemObject(GPUVector2);
+	clReleaseMemObject(GPUVector2);
 
-     clReleaseMemObject(GPUOutputVector);
+	clReleaseMemObject(GPUOutputVector);
 
-     for( int i =0 ; i < SIZE; i++)
+	for( int i =0 ; i < SIZE; i++)
 
-          printf("[%d + %d = %d]\n",HostVector1[i], HostVector2[i], HostOutputVector[i]);
+		printf("[%d + %d = %d]\n",HostVector1[i], HostVector2[i], HostOutputVector[i]);
 
-     return 0;
+	return 0;
 
 }
